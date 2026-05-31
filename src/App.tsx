@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { 
   Terminal, 
   User, 
@@ -7,10 +7,7 @@ import {
   Code2,
   Wifi, 
   Battery, 
-  Maximize2,
-  Minimize2,
   X,
-  Minus,
   LayoutGrid,
   Image as ImageIcon,
   Thermometer,
@@ -38,30 +35,34 @@ import {
   ChevronRight,
   Star,
   GitBranch,
-  ExternalLink,
   Database,
   Server,
   Layers,
   Coffee,
-  Link,
   Palette,
   Keyboard,
-  Music,
-  Volume1,
-  VolumeX,
   Check,
   MousePointer2,
-  Wind
+  Wind,
+  Rocket,
+  Gamepad2
 } from 'lucide-react';
 import Hero from './Hero';
-import { THEMES, applyTheme, getThemeById, type Theme } from './themes';
+import Launchpad from './Launchpad';
+import Snake from './games/Snake';
+import SplitText from './SplitText';
+import { THEMES, applyTheme, type Theme } from './themes';
 import './App.css';
 
 const WALLPAPERS = [
-  'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=2564&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2564&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=2564&auto=format&fit=crop'
+  '/wallpapers/Mountain-and-Samurai.jpg',
+  '/wallpapers/floating-mountains.png',
+  '/wallpapers/snowy-peaks.png',
+  '/wallpapers/coastal-village.jpg',
+  '/wallpapers/river-valley.jpg',
+  '/wallpapers/mountain-valley.jpg',
+  '/wallpapers/mystical-forest.png',
+  '/wallpapers/cyberpunk-city.png'
 ];
 
 interface WindowState {
@@ -90,6 +91,7 @@ const App: React.FC = () => {
   const [currentTheme, setCurrentTheme] = useState<Theme>(THEMES[0]);
   const [notifCount, setNotifCount] = useState(3);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showLaunchpad, setShowLaunchpad] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [ambientActive, setAmbientActive] = useState(false);
   const ambientRef = useRef<{ ctx: AudioContext; source: AudioBufferSourceNode; gain: GainNode } | null>(null);
@@ -104,6 +106,20 @@ const App: React.FC = () => {
   const [showSearch, setShowSearch] = useState(false);
   const [showPower, setShowPower] = useState(false);
   const [showThemes, setShowThemes] = useState(false);
+
+  const closeAllPopups = useCallback(() => {
+    setShowDashboard(false);
+    setShowWallpapers(false);
+    setShowQuickSettings(false);
+    setShowCalendar(false);
+    setShowMessages(false);
+    setShowMedia(false);
+    setShowSearch(false);
+    setShowPower(false);
+    setShowThemes(false);
+    setShowLaunchpad(false);
+    setContextMenu(null);
+  }, []);
 
   // Clock
   useEffect(() => {
@@ -120,11 +136,20 @@ const App: React.FC = () => {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === '?' && !e.ctrlKey && !e.metaKey) setShowShortcuts(s => !s);
-      if (e.key === 'Escape') { setShowShortcuts(false); setContextMenu(null); }
+      if (e.key === 'Escape') { 
+        setShowShortcuts(false); 
+        setShowLaunchpad(false);
+        setContextMenu(null); 
+      }
+      if ((e.key === 'l' || e.key === 'L') && e.altKey) {
+        e.preventDefault();
+        closeAllPopups();
+        setShowLaunchpad(s => !s);
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }, [closeAllPopups]);
 
   // Ambient sound control
   const toggleAmbient = () => {
@@ -165,19 +190,6 @@ const App: React.FC = () => {
     }
   }, [volume]);
 
-  const closeAllPopups = useCallback(() => {
-    setShowDashboard(false);
-    setShowWallpapers(false);
-    setShowQuickSettings(false);
-    setShowCalendar(false);
-    setShowMessages(false);
-    setShowMedia(false);
-    setShowSearch(false);
-    setShowPower(false);
-    setShowThemes(false);
-    setContextMenu(null);
-  }, []);
-
   const bringToFront = (id: number) => {
     setTopZ(prev => prev + 1);
     setWindows(prev => prev.map(w => w.id === id ? { ...w, zIndex: topZ + 1, isMinimized: false } : w));
@@ -215,6 +227,43 @@ const App: React.FC = () => {
     setWindows(windows.map(w => w.id === id ? { ...w, isMinimized: !w.isMinimized } : w));
   };
 
+  const handleLaunchApp = (appId: string) => {
+    switch (appId) {
+      case 'terminal':
+        openWindow('Terminal', <Terminal size={16} />, <TerminalContent />);
+        break;
+      case 'about':
+        openWindow('About Me', <User size={16} />, <AboutContent />);
+        break;
+      case 'projects':
+        openWindow('Projects', <Code size={16} />, <ProjectsContent />);
+        break;
+      case 'github':
+        openWindow('GitHub', <Code2 size={16} />, <GithubContent />);
+        break;
+      case 'wallpaper':
+        setShowWallpapers(true);
+        break;
+      case 'themes':
+        setShowThemes(true);
+        break;
+      case 'media':
+        setShowMedia(true);
+        break;
+      case 'shortcuts':
+        setShowShortcuts(true);
+        break;
+      case 'settings':
+        setShowQuickSettings(true);
+        break;
+      case 'snake':
+        openWindow('Snake Game', <Gamepad2 size={16} />, <Snake />);
+        break;
+      default:
+        break;
+    }
+  };
+
   if (showHero) {
     return <Hero onEnter={() => setShowHero(false)} />;
   }
@@ -246,6 +295,7 @@ const App: React.FC = () => {
         </div>
 
         <div className="side-section middle">
+          <SideIcon icon={<Rocket size={20} />} label="Launchpad" onClick={() => { closeAllPopups(); setShowLaunchpad(l => !l); }} active={showLaunchpad} />
           <SideIcon icon={<Home size={20} />} label="Desktop" onClick={() => { setWindows([]); closeAllPopups(); }} />
           <SideIcon icon={<User size={20} />} label="About Me" onClick={() => openWindow('About Me', <User size={16} />, <AboutContent />)} />
           <SideIcon icon={<Code size={20} />} label="Projects" onClick={() => openWindow('Projects', <Code size={16} />, <ProjectsContent />)} />
@@ -289,6 +339,12 @@ const App: React.FC = () => {
         {showPower && <PowerOverlay onClose={() => setShowPower(false)} />}
         {showThemes && <ThemePanel currentTheme={currentTheme} onSelect={t => { setCurrentTheme(t); }} onClose={() => setShowThemes(false)} />}
         {showShortcuts && <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />}
+        {showLaunchpad && (
+          <Launchpad 
+            onClose={() => setShowLaunchpad(false)} 
+            onLaunch={handleLaunchApp} 
+          />
+        )}
         {contextMenu && (
           <ContextMenuPanel
             x={contextMenu.x} y={contextMenu.y}
@@ -297,6 +353,7 @@ const App: React.FC = () => {
             setShowWallpapers={setShowWallpapers}
             setShowThemes={setShowThemes}
             setShowShortcuts={setShowShortcuts}
+            setShowLaunchpad={setShowLaunchpad}
             closeAllPopups={closeAllPopups}
           />
         )}
@@ -304,6 +361,32 @@ const App: React.FC = () => {
 
       {/* Main Desktop Area */}
       <main className="desktop" onClick={closeAllPopups}>
+        <div className="desktop-logo">
+          <SplitText
+            text="Sharvil"
+            className="logo-text"
+            delay={80}
+            duration={1.2}
+            ease="power3.out"
+            splitType="chars"
+            from={{ opacity: 0, y: 50, scale: 0.85 }}
+            to={{ opacity: 1, y: 0, scale: 1 }}
+            tag="h1"
+            textAlign="right"
+          />
+          <div className="resume-btn-container">
+            <a href="https://drive.google.com/file/d/1zliv0b8hSDZSaKnLnOPTSnP-c0SkzIhk/view?usp=sharing" target="_blank" rel="noopener noreferrer" className="resume-btn" onClick={e => e.stopPropagation()}>
+              Resume
+              <div className="icon">
+                <svg height={24} width={24} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M0 0h24v24H0z" fill="none" />
+                  <path d="M16.172 11l-5.364-5.364 1.414-1.414L20 12l-7.778 7.778-1.414-1.414L16.172 13H4v-2z" fill="currentColor" />
+                </svg>
+              </div>
+            </a>
+          </div>
+        </div>
+
         <AnimatePresence>
           {windows.map((win) => (
             <Window 
@@ -316,12 +399,7 @@ const App: React.FC = () => {
             />
           ))}
         </AnimatePresence>
-        
-        {windows.length === 0 && (
-          <div className="desktop-hint">
-            <p>Click sidebar icons to open apps</p>
-          </div>
-        )}
+
       </main>
     </div>
   );
@@ -329,24 +407,34 @@ const App: React.FC = () => {
 
 // ─── Sub-components ───────────────────────────────────────────────
 
-const DashboardOverlay: React.FC<{ activeTab: string, setActiveTab: (t: string) => void, time: Date }> = ({ activeTab, setActiveTab, time }) => (
-  <motion.div
-    className="dashboard glass"
-    drag
-    dragMomentum={false}
-    dragElastic={0}
-    dragHandle=".dashboard-drag-handle"
-    initial={{ scale: 0.92, opacity: 0, y: -16 }}
-    animate={{ scale: 1, opacity: 1, y: 0 }}
-    exit={{ scale: 0.92, opacity: 0, y: -16 }}
-    transition={{ type: 'spring', damping: 22, stiffness: 280 }}
-    onClick={e => e.stopPropagation()}
-  >
-    <div className="dashboard-drag-handle dashboard-tabs">
-      {['Dashboard', 'Media', 'Performance', 'Workspaces'].map(tab => (
-        <button key={tab} className={`dash-tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>{tab}</button>
-      ))}
-    </div>
+const DashboardOverlay: React.FC<{ activeTab: string, setActiveTab: (t: string) => void, time: Date }> = ({ activeTab, setActiveTab, time }) => {
+  const dragControls = useDragControls();
+  return (
+    <motion.div
+      className="dashboard glass"
+      drag
+      dragControls={dragControls}
+      dragListener={false}
+      dragMomentum={false}
+      dragElastic={0}
+      initial={{ scale: 0.92, opacity: 0, y: -16 }}
+      animate={{ scale: 1, opacity: 1, y: 0 }}
+      exit={{ scale: 0.92, opacity: 0, y: -16 }}
+      transition={{ type: 'spring', damping: 22, stiffness: 280 }}
+      onClick={e => e.stopPropagation()}
+    >
+      <div 
+        className="dashboard-drag-handle dashboard-tabs"
+        onPointerDown={(e) => {
+          if ((e.target as HTMLElement).closest('button')) return;
+          dragControls.start(e);
+        }}
+        style={{ cursor: 'grab' }}
+      >
+        {['Dashboard', 'Media', 'Performance', 'Workspaces'].map(tab => (
+          <button key={tab} className={`dash-tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>{tab}</button>
+        ))}
+      </div>
     <div className="dashboard-content">
       {activeTab === 'Dashboard' && (
         <div className="dashboard-grid">
@@ -409,7 +497,8 @@ const DashboardOverlay: React.FC<{ activeTab: string, setActiveTab: (t: string) 
       )}
     </div>
   </motion.div>
-);
+  );
+};
 
 const QuickSettingsOverlay: React.FC<{
   onPower: () => void;
@@ -494,6 +583,7 @@ const QuickSettingsOverlay: React.FC<{
 
 const SearchOverlay: React.FC<{ openWindow: (t: string, i: React.ReactNode, c: React.ReactNode) => void, onClose: () => void }> = ({ openWindow, onClose }) => {
   const [query, setQuery] = useState('');
+  const dragControls = useDragControls();
   
   const apps = [
     { label: 'Terminal', icon: <Terminal size={18} />, content: <TerminalContent /> },
@@ -508,16 +598,24 @@ const SearchOverlay: React.FC<{ openWindow: (t: string, i: React.ReactNode, c: R
     <motion.div
       className="search-overlay glass"
       drag
+      dragControls={dragControls}
+      dragListener={false}
       dragMomentum={false}
       dragElastic={0}
-      dragHandle=".search-box"
       initial={{ scale: 0.9, opacity: 0, y: -10 }}
       animate={{ scale: 1, opacity: 1, y: 0 }}
       exit={{ scale: 0.9, opacity: 0, y: -10 }}
       transition={{ type: 'spring', damping: 22, stiffness: 300 }}
       onClick={e => e.stopPropagation()}
     >
-      <div className="search-box">
+      <div 
+        className="search-box"
+        onPointerDown={(e) => {
+          if ((e.target as HTMLElement).closest('input') || (e.target as HTMLElement).closest('button')) return;
+          dragControls.start(e);
+        }}
+        style={{ cursor: 'grab' }}
+      >
         <Search size={18} />
         <input
           autoFocus
@@ -1182,27 +1280,29 @@ const TerminalContent = () => {
   if (phase === 'boot')   return <BootSequence onComplete={() => setPhase('interactive')} />;
 
   return (
-    <div className="terminal-body hacker" style={{ position: 'relative' }}>
+    <div className="terminal-body hacker" style={{ position: 'relative', height: '100%', overflow: 'hidden' }}>
       <MatrixRain isBackground />
       <div className="terminal-scanlines" />
-      <div className="terminal-lines" style={{ position: 'relative', zIndex: 2 }}>
-        {lines.map((l, i) => (
-          <p key={i} className={`terminal-line ${l.type}`}>{l.text}</p>
-        ))}
-        <div ref={bottomRef} />
+      <div className="terminal-scroll-container">
+        <div className="terminal-lines">
+          {lines.map((l, i) => (
+            <p key={i} className={`terminal-line ${l.type}`}>{l.text}</p>
+          ))}
+          <div ref={bottomRef} />
+        </div>
+        <form className="terminal-input-row" onSubmit={handleSubmit}>
+          <span className="prompt">visitor@portfolio:~$</span>
+          <input
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            autoFocus
+            spellCheck={false}
+            autoComplete="off"
+            placeholder="type 'help' for commands"
+          />
+          <span className="terminal-cursor-blink">▋</span>
+        </form>
       </div>
-      <form className="terminal-input-row" onSubmit={handleSubmit} style={{ position: 'relative', zIndex: 2 }}>
-        <span className="prompt">visitor@portfolio:~$</span>
-        <input
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          autoFocus
-          spellCheck={false}
-          autoComplete="off"
-          placeholder="type 'help' for commands"
-        />
-        <span className="terminal-cursor-blink">▋</span>
-      </form>
     </div>
   );
 };
@@ -1213,7 +1313,7 @@ const AboutContent = () => (
       <div className="about-avatar glass">
         <User size={44} />
       </div>
-      <h1 className="about-name">Your Name</h1>
+      <h1 className="about-name">Sharvil</h1>
       <p className="subtitle">Full-Stack Engineer · Linux Enthusiast · Open Source Contributor</p>
       <div className="about-social">
         <a href="#" className="social-btn glass"><Code2 size={16} /> GitHub</a>
@@ -1273,7 +1373,6 @@ const ProjectsContent = () => (
           desc: 'A Linux desktop-inspired interactive developer portfolio built with React, Framer Motion & GSAP.',
           tags: ['React', 'TypeScript', 'GSAP', 'Framer'],
           stars: 128,
-          color: '#FF8C00',
           link: '#',
         },
         {
@@ -1282,7 +1381,6 @@ const ProjectsContent = () => (
           desc: 'High-performance REST API gateway with rate limiting, auth, and analytics built in Rust.',
           tags: ['Rust', 'PostgreSQL', 'Redis'],
           stars: 84,
-          color: '#bd93f9',
           link: '#',
         },
         {
@@ -1291,7 +1389,6 @@ const ProjectsContent = () => (
           desc: 'Real-time data visualization dashboard with live chart streaming and custom D3.js components.',
           tags: ['Next.js', 'D3.js', 'WebSockets'],
           stars: 67,
-          color: '#50fa7b',
           link: '#',
         },
         {
@@ -1300,22 +1397,44 @@ const ProjectsContent = () => (
           desc: 'My curated Arch Linux + Hyprland configuration. Earthy tones, minimal, fast.',
           tags: ['Lua', 'Bash', 'Nix', 'Hyprland'],
           stars: 203,
-          color: '#8be9fd',
           link: '#',
         },
       ].map(proj => (
-        <div key={proj.name} className="project-card glass">
-          <div className="p-card-top">
-            <div className="p-icon" style={{ color: proj.color }}>{proj.icon}</div>
-            <div className="p-stars"><Star size={12} /> {proj.stars}</div>
-          </div>
-          <h4 className="p-name">{proj.name}</h4>
-          <p className="p-desc">{proj.desc}</p>
-          <div className="p-footer">
-            <div className="p-tags">
-              {proj.tags.map(t => <span key={t} className="p-tag">{t}</span>)}
+        <div key={proj.name} className="project-card-parent">
+          <div className="project-card-inner">
+            <div className="logo">
+              <span className="circle circle1" />
+              <span className="circle circle2" />
+              <span className="circle circle3" />
+              <span className="circle circle4" />
+              <span className="circle circle5">
+                {proj.icon}
+              </span>
             </div>
-            <a href={proj.link} className="p-link"><ExternalLink size={14} /></a>
+            <div className="glass" />
+            <div className="content">
+               <span className="title">{proj.name}</span>
+               <span className="text">{proj.desc}</span>
+               <div className="p-tags" style={{ marginTop: '15px' }}>
+                 {proj.tags.map(t => (
+                   <span key={t} className="p-tag">{t}</span>
+                 ))}
+               </div>
+            </div>
+            <div className="bottom">
+              <div className="social-buttons-container">
+                <div className="social-button" title="GitHub Stars" style={{ pointerEvents: 'auto' }}>
+                  <Star size={11} fill="currentColor" style={{ marginRight: '3px' }} />
+                  <span style={{ fontSize: '10px', fontWeight: 800 }}>{proj.stars}</span>
+                </div>
+              </div>
+              <a href={proj.link} target="_blank" rel="noopener noreferrer" className="view-more" onClick={e => e.stopPropagation()}>
+                <button className="view-more-button">View code</button>
+                <svg className="svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </a>
+            </div>
           </div>
         </div>
       ))}
@@ -1422,13 +1541,15 @@ const ContextMenuPanel: React.FC<{
   setShowWallpapers: (v: boolean) => void;
   setShowThemes: (v: boolean) => void;
   setShowShortcuts: (v: boolean) => void;
+  setShowLaunchpad: (v: boolean) => void;
   closeAllPopups: () => void;
-}> = ({ x, y, onClose, openWindow, setShowWallpapers, setShowThemes, setShowShortcuts, closeAllPopups }) => {
+}> = ({ x, y, onClose, openWindow, setShowWallpapers, setShowThemes, setShowShortcuts, setShowLaunchpad, closeAllPopups }) => {
   // Prevent menu from going off-screen
   const safeX = Math.min(x, globalThis.innerWidth  - 210);
   const safeY = Math.min(y, globalThis.innerHeight - 260);
 
   const items = [
+    { icon: <Rocket size={14} />,        label: 'Open Launchpad',     action: () => { onClose(); closeAllPopups(); setShowLaunchpad(true); } },
     { icon: <Terminal size={14} />,      label: 'New Terminal',       action: () => { onClose(); openWindow('Terminal', <Terminal size={16} />, <TerminalContent />); } },
     { icon: <User size={14} />,          label: 'About Me',           action: () => { onClose(); openWindow('About Me', <User size={16} />, <AboutContent />); } },
     { icon: <Code size={14} />,          label: 'Projects',           action: () => { onClose(); openWindow('Projects', <Code size={16} />, <ProjectsContent />); } },
@@ -1473,7 +1594,8 @@ const ContextMenuPanel: React.FC<{
 const ShortcutsOverlay: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const SHORTCUTS = [
     { keys: ['?'],              desc: 'Toggle shortcuts overlay' },
-    { keys: ['Esc'],            desc: 'Close overlay / context menu' },
+    { keys: ['Alt', 'L'],       desc: 'Toggle fullscreen Launchpad' },
+    { keys: ['Esc'],            desc: 'Close overlay / context menu / Launchpad' },
     { keys: ['Right-click'],    desc: 'Desktop context menu' },
     { keys: ['Drag to edge'],   desc: 'Snap window left / right half' },
     { keys: ['Drag to top'],    desc: 'Maximize window' },
