@@ -31,12 +31,10 @@ import {
   RotateCcw,
   Users,
   Mail,
-  Globe,
   ChevronRight,
   Star,
   GitBranch,
   Database,
-  Server,
   Layers,
   Coffee,
   Palette,
@@ -52,7 +50,54 @@ import Launchpad from './Launchpad';
 import Snake from './games/Snake';
 import SplitText from './SplitText';
 import { THEMES, applyTheme, type Theme } from './themes';
+import { TechIcon, TECH_CATEGORIES } from './TechIcons';
+import { getGithubData, type GithubProfile, type GithubRepo, type ContributionDay } from './github';
 import './App.css';
+
+const ProfileImage: React.FC<{ className?: string; size?: number; clickable?: boolean }> = ({ className, size, clickable = true }) => {
+  const [src, setSrc] = useState<string>('');
+  const extensions = ['png', 'jpg', 'jpeg', 'webp', 'svg'];
+  const [extIndex, setExtIndex] = useState(0);
+  const fallback = 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sharvil';
+
+  useEffect(() => {
+    setSrc(`/My Profile Picture/profile.${extensions[0]}`);
+  }, []);
+
+  const handleError = () => {
+    if (extIndex + 1 < extensions.length) {
+      const nextIndex = extIndex + 1;
+      setExtIndex(nextIndex);
+      setSrc(`/My Profile Picture/profile.${extensions[nextIndex]}`);
+    } else {
+      setSrc(fallback);
+    }
+  };
+
+  const handleClick = () => {
+    if (clickable) {
+      const event = new CustomEvent('open-profile-lightbox');
+      window.dispatchEvent(event);
+    }
+  };
+
+  return (
+    <img 
+      src={src} 
+      onError={handleError} 
+      className={className} 
+      alt="Sharvil Sunil Patil" 
+      onClick={handleClick}
+      style={{
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover',
+        cursor: clickable ? 'pointer' : 'default',
+        ...(size ? { width: size, height: size } : {})
+      }}
+    />
+  );
+};
 
 const WALLPAPERS = [
   '/wallpapers/Mountain-and-Samurai.jpg',
@@ -92,6 +137,7 @@ const App: React.FC = () => {
   const [notifCount, setNotifCount] = useState(3);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showLaunchpad, setShowLaunchpad] = useState(false);
+  const [isProfileExpanded, setIsProfileExpanded] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [ambientActive, setAmbientActive] = useState(false);
   const ambientRef = useRef<{ ctx: AudioContext; source: AudioBufferSourceNode; gain: GainNode } | null>(null);
@@ -131,6 +177,13 @@ const App: React.FC = () => {
   useEffect(() => {
     applyTheme(currentTheme);
   }, [currentTheme]);
+
+  // Listen for profile lightbox trigger events
+  useEffect(() => {
+    const handleOpenLightbox = () => setIsProfileExpanded(true);
+    window.addEventListener('open-profile-lightbox', handleOpenLightbox);
+    return () => window.removeEventListener('open-profile-lightbox', handleOpenLightbox);
+  }, []);
 
   // Keyboard shortcuts listener
   useEffect(() => {
@@ -339,6 +392,32 @@ const App: React.FC = () => {
         {showPower && <PowerOverlay onClose={() => setShowPower(false)} />}
         {showThemes && <ThemePanel currentTheme={currentTheme} onSelect={t => { setCurrentTheme(t); }} onClose={() => setShowThemes(false)} />}
         {showShortcuts && <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />}
+        {isProfileExpanded && (
+          <motion.div 
+            className="profile-lightbox-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsProfileExpanded(false)}
+          >
+            <motion.div 
+              className="profile-lightbox-content glass"
+              initial={{ scale: 0.92, y: 16 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.92, y: 16 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+              onClick={e => e.stopPropagation()}
+            >
+              <button className="lightbox-close-btn" onClick={() => setIsProfileExpanded(false)}>
+                <X size={20} />
+              </button>
+              <div className="lightbox-image-wrap">
+                <ProfileImage clickable={false} />
+              </div>
+              <span className="lightbox-caption">Sharvil Sunil Patil</span>
+            </motion.div>
+          </motion.div>
+        )}
         {showLaunchpad && (
           <Launchpad 
             onClose={() => setShowLaunchpad(false)} 
@@ -447,7 +526,7 @@ const DashboardOverlay: React.FC<{ activeTab: string, setActiveTab: (t: string) 
           </div>
           <div className="widget profile-widget">
             <div className="avatar">
-              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=PortfolioDev" alt="avatar" />
+              <ProfileImage />
             </div>
             <div className="sys-info">
               <p><Monitor size={12} /> Arch Linux</p>
@@ -1234,14 +1313,21 @@ const TerminalContent = () => {
   const COMMANDS: Record<string, string[]> = {
     whoami:          ['visitor — welcome to my portfolio terminal 👋'],
     'ls projects/':  ['project-alpha/   project-beta/   portfolio-os/   open-source/'],
-    'cat skills.txt':['Languages:   TypeScript · Python · Rust · Go',
-                      'Frontend:    React · Next.js · Framer Motion · GSAP',
-                      'Backend:     Node.js · FastAPI · PostgreSQL · Redis',
-                      'DevOps:      Docker · K8s · GitHub Actions · Nix'],
-    'cat about.txt': ['Name:        Dev Portfolio',
-                      'Location:    Earth 🌍',
-                      'Passion:     Building beautiful, fast, open-source software.',
-                      'Status:      Open to work & collaborations ✅'],
+    'cat skills.txt':[
+      'Languages:     C · C++ · Java · Python · JS · TS · PHP',
+      'Frontend:      HTML5 · CSS3 · React · Firebase',
+      'Backend:       Node.js · Express.js · FastAPI · Flask · Spring Boot · npm',
+      'Databases:     MongoDB · MySQL · SQLite',
+      'Tools & Tech:  Git · GitHub · VS Code · Linux · Docker · Postman · IntelliJ · Anaconda · PyCharm · Hugging Face',
+      'AI Tools:      Qwen Code CLI · Antigravity · OpenCode'
+    ],
+    'cat about.txt': [
+      'Name:        Sharvil Sunil Patil',
+      'Role:        Computer Science Engineer',
+      'Focus:       Agentic AI · Full-Stack · Backend',
+      'Bio:         Designing applications that combine AI reasoning, automation, and scalable software architecture.',
+      'Status:      Constantly exploring new technologies & building intelligent systems 🚀'
+    ],
     'git log --oneline': [
       '\x1b[33ma3f9c12\x1b[0m feat: cinematic hero reveal with GSAP',
       '\x1b[33mb2d8e01\x1b[0m feat: 7 themes + context menu + snap zones',
@@ -1310,185 +1396,399 @@ const TerminalContent = () => {
 const AboutContent = () => (
   <div className="content-padding about-content">
     <div className="about-hero">
-      <div className="about-avatar glass">
-        <User size={44} />
+      <div className="about-avatar glass" style={{ overflow: 'hidden', padding: 0 }}>
+        <ProfileImage />
       </div>
-      <h1 className="about-name">Sharvil</h1>
-      <p className="subtitle">Full-Stack Engineer · Linux Enthusiast · Open Source Contributor</p>
+      <h1 className="about-name">Sharvil Sunil patil</h1>
+      <p className="subtitle">Computer Science Engineer · Agentic AI · Full-Stack & Backend</p>
       <div className="about-social">
-        <a href="#" className="social-btn glass"><Code2 size={16} /> GitHub</a>
-        <a href="#" className="social-btn glass"><Users size={16} /> LinkedIn</a>
-        <a href="#" className="social-btn glass"><Mail size={16} /> Email</a>
-        <a href="#" className="social-btn glass"><Globe size={16} /> Website</a>
+        <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="social-btn glass"><Code2 size={16} /> GitHub</a>
+        <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="social-btn glass"><Users size={16} /> LinkedIn</a>
+        <a href="mailto:contact@example.com" className="social-btn glass"><Mail size={16} /> Email</a>
       </div>
     </div>
     <div className="about-sections">
       <div className="about-section glass">
         <h3>Profile</h3>
-        <p>Passionate developer building immersive web experiences through careful design and robust engineering. I love Linux, open-source software, and creative coding.</p>
+        <p style={{ whiteSpace: 'pre-line' }}>
+          Hi, I'm Sharvil Patil, a Computer Science Engineer passionate about building intelligent software systems that solve real-world problems. My primary focus lies in Agentic AI, Full-Stack Development, and Backend Engineering. I enjoy designing applications that combine AI reasoning, automation, and scalable software architecture to create practical and impactful solutions.
+          {"\n\n"}
+          I have worked on projects involving AI-powered development tools, algorithm visualization systems, workflow automation, and interactive developer platforms. I am constantly exploring new technologies, improving my engineering skills, and transforming ideas into products that deliver meaningful value.
+          {"\n\n"}
+          My goal is to become an engineer who not only writes code but also builds intelligent systems capable of assisting, automating, and augmenting human decision-making.
+        </p>
       </div>
       <div className="about-section glass">
-        <h3>Skills</h3>
-        <div className="skills-grid">
-          {[
-            { label: 'TypeScript', pct: 92 },
-            { label: 'React / Next.js', pct: 90 },
-            { label: 'Python', pct: 85 },
-            { label: 'Node.js', pct: 82 },
-            { label: 'Docker / K8s', pct: 75 },
-            { label: 'Rust', pct: 60 },
-          ].map(skill => (
-            <div key={skill.label} className="skill-item">
-              <div className="skill-label">
-                <span>{skill.label}</span>
-                <span className="skill-pct">{skill.pct}%</span>
-              </div>
-              <div className="skill-bar">
-                <motion.div
-                  className="skill-fill"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${skill.pct}%` }}
-                  transition={{ duration: 1, ease: 'easeOut', delay: 0.2 }}
-                />
+        <h3>Tech Stack</h3>
+        <div className="tech-stack-container">
+          {TECH_CATEGORIES.map(category => (
+            <div key={category.title} className="tech-category">
+              <h4 className="tech-category-title">
+                <span style={{ marginRight: '8px' }}>{category.icon}</span>
+                {category.title}
+              </h4>
+              <div className="tech-grid">
+                {category.items.map(item => (
+                  <div 
+                    key={item.id} 
+                    className="tech-icon-container"
+                    title={item.name}
+                    style={{ '--brand-color': item.color } as React.CSSProperties}
+                  >
+                    <TechIcon id={item.id} size={44} />
+                  </div>
+                ))}
               </div>
             </div>
           ))}
         </div>
+        <div className="tech-additional" style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div>
+            <span className="tech-additional-label" style={{ fontWeight: 700, color: 'var(--accent)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Also Experienced With:</span>
+            <p className="tech-additional-value" style={{ fontSize: '12px', color: 'var(--subtext)', marginTop: '4px', lineHeight: 1.6 }}>Dev-C++ · IntelliJ IDEA · Oracle SQL · API Testing</p>
+          </div>
+          <div>
+            <span className="tech-additional-label" style={{ fontWeight: 700, color: 'var(--accent)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>AI / Vibe Coding Tools:</span>
+            <p className="tech-additional-value" style={{ fontSize: '12px', color: 'var(--subtext)', marginTop: '4px', lineHeight: 1.6 }}>Qwen Code CLI • Antigravity • OpenCode</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 );
 
-const ProjectsContent = () => (
-  <div className="content-padding">
-    <div className="projects-header">
-      <h3>Featured Projects</h3>
-      <a href="#" className="view-all-btn"><Code2 size={14} /> View All on GitHub</a>
-    </div>
-    <div className="projects-grid">
-      {[
-        {
-          icon: <Layers size={22} />,
-          name: 'Portfolio OS',
-          desc: 'A Linux desktop-inspired interactive developer portfolio built with React, Framer Motion & GSAP.',
-          tags: ['React', 'TypeScript', 'GSAP', 'Framer'],
-          stars: 128,
-          link: '#',
-        },
-        {
-          icon: <Server size={22} />,
-          name: 'API Gateway',
-          desc: 'High-performance REST API gateway with rate limiting, auth, and analytics built in Rust.',
-          tags: ['Rust', 'PostgreSQL', 'Redis'],
-          stars: 84,
-          link: '#',
-        },
-        {
-          icon: <Database size={22} />,
-          name: 'DataViz Dashboard',
-          desc: 'Real-time data visualization dashboard with live chart streaming and custom D3.js components.',
-          tags: ['Next.js', 'D3.js', 'WebSockets'],
-          stars: 67,
-          link: '#',
-        },
-        {
-          icon: <Code size={22} />,
-          name: 'dotfiles',
-          desc: 'My curated Arch Linux + Hyprland configuration. Earthy tones, minimal, fast.',
-          tags: ['Lua', 'Bash', 'Nix', 'Hyprland'],
-          stars: 203,
-          link: '#',
-        },
-      ].map(proj => (
-        <div key={proj.name} className="project-card-parent">
-          <div className="project-card-inner">
-            <div className="logo">
-              <span className="circle circle1" />
-              <span className="circle circle2" />
-              <span className="circle circle3" />
-              <span className="circle circle4" />
-              <span className="circle circle5">
-                {proj.icon}
-              </span>
-            </div>
-            <div className="glass" />
-            <div className="content">
-               <span className="title">{proj.name}</span>
-               <span className="text">{proj.desc}</span>
-               <div className="p-tags" style={{ marginTop: '15px' }}>
-                 {proj.tags.map(t => (
-                   <span key={t} className="p-tag">{t}</span>
-                 ))}
-               </div>
-            </div>
-            <div className="bottom">
-              <div className="social-buttons-container">
-                <div className="social-button" title="GitHub Stars" style={{ pointerEvents: 'auto' }}>
-                  <Star size={11} fill="currentColor" style={{ marginRight: '3px' }} />
-                  <span style={{ fontSize: '10px', fontWeight: 800 }}>{proj.stars}</span>
+const ProjectsContent = () => {
+  const [repos, setRepos] = useState<GithubRepo[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getGithubData().then(data => {
+      setRepos(data.repos);
+      setLoading(false);
+    });
+  }, []);
+
+  const getProjectIcon = (name: string, topics: string[] = []) => {
+    const n = name.toLowerCase();
+    const t = topics.map(x => x.toLowerCase());
+    if (n.includes('chatbot') || n.includes('chat') || t.includes('chatbot')) return <Users size={22} />;
+    if (n.includes('visualizer') || n.includes('viz') || t.includes('visualization')) return <Layers size={22} />;
+    if (n.includes('arena') || n.includes('game') || t.includes('game') || n.includes('play')) return <Gamepad2 size={22} />;
+    if (n.includes('portfolio') || n.includes('website')) return <Monitor size={22} />;
+    return <Code size={22} />;
+  };
+
+  return (
+    <div className="content-padding">
+      <div className="projects-header">
+        <h3>GitHub Projects</h3>
+        <a href="https://github.com/PatilSharvil" target="_blank" rel="noopener noreferrer" className="view-all-btn"><Code2 size={14} /> View GitHub Profile</a>
+      </div>
+      
+      {loading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px', flexDirection: 'column', gap: '12px' }}>
+          <div className="spinning" style={{ width: '32px', height: '32px', border: '3px solid rgba(255,255,255,0.1)', borderTopColor: 'var(--accent)', borderRadius: '50%' }}></div>
+          <span style={{ fontSize: '13px', color: 'var(--subtext)' }}>Fetching repositories...</span>
+        </div>
+      ) : repos.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>
+          <p>No repositories found or API rate limit exceeded.</p>
+        </div>
+      ) : (
+        <div className="projects-grid">
+          {repos.map(proj => {
+            const tags = proj.topics && proj.topics.length > 0 
+              ? proj.topics.slice(0, 3) 
+              : (proj.language ? [proj.language] : ['Open Source']);
+
+            return (
+              <div key={proj.name} className="project-card-parent">
+                <div className="project-card-inner">
+                  <div className="logo">
+                    <span className="circle circle1" />
+                    <span className="circle circle2" />
+                    <span className="circle circle3" />
+                    <span className="circle circle4" />
+                    <span className="circle circle5">
+                      {getProjectIcon(proj.name, proj.topics)}
+                    </span>
+                  </div>
+                  <div className="glass" />
+                  <div className="content">
+                     <span className="title" style={{ fontSize: proj.name.length > 15 ? '18px' : '22px' }}>{proj.name}</span>
+                     <span className="text" style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{proj.description || 'No description provided.'}</span>
+                     <div className="p-tags" style={{ marginTop: '15px' }}>
+                       {tags.map(t => (
+                         <span key={t} className="p-tag">{t}</span>
+                       ))}
+                     </div>
+                  </div>
+                  <div className="bottom">
+                    <div className="social-buttons-container">
+                      <div className="social-button" title="GitHub Stars" style={{ pointerEvents: 'auto' }}>
+                        <Star size={11} fill="currentColor" style={{ marginRight: '3px' }} />
+                        <span style={{ fontSize: '10px', fontWeight: 800 }}>{proj.stargazers_count}</span>
+                      </div>
+                    </div>
+                    <a href={proj.html_url} target="_blank" rel="noopener noreferrer" className="view-more" onClick={e => e.stopPropagation()}>
+                      <button className="view-more-button">View code</button>
+                      <svg className="svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m6 9 6 6 6-6" />
+                      </svg>
+                    </a>
+                  </div>
                 </div>
               </div>
-              <a href={proj.link} target="_blank" rel="noopener noreferrer" className="view-more" onClick={e => e.stopPropagation()}>
-                <button className="view-more-button">View code</button>
-                <svg className="svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
-              </a>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const GithubContent = () => {
+  const [profile, setProfile] = useState<GithubProfile | null>(null);
+  const [repos, setRepos] = useState<GithubRepo[]>([]);
+  const [contributions, setContributions] = useState<ContributionDay[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getGithubData().then(data => {
+      setProfile(data.profile);
+      setRepos(data.repos);
+      setContributions(data.contributions || []);
+      setLoading(false);
+    });
+  }, []);
+
+  const totalStars = repos.reduce((acc, curr) => acc + (curr.stargazers_count || 0), 0);
+
+  // Build a GitHub-style heatmap: columns = weeks (Sun→Sat), padded to start on Sunday
+  // activityGrid[weekIndex][dayOfWeek] = { level, count, date }
+  const { activityGrid, monthLabels, totalContribs } = React.useMemo(() => {
+    if (contributions.length === 0) {
+      // Show empty grid while loading or if API fails
+      const emptyWeeks = Array.from({ length: 53 }, () =>
+        Array.from({ length: 7 }, () => ({ level: 0 as 0|1|2|3|4, count: 0, date: '' }))
+      );
+      return { activityGrid: emptyWeeks, monthLabels: [] as { text: string; colIndex: number }[], totalContribs: 0 };
+    }
+
+    // contributions are sorted oldest→newest, each with {date, count, level}
+    // Find the first Sunday at or before the first contribution date
+    const firstDate = new Date(contributions[0].date + 'T00:00:00');
+    const lastDate = new Date(contributions[contributions.length - 1].date + 'T00:00:00');
+
+    // Start from the Sunday of the first week
+    const startSunday = new Date(firstDate);
+    startSunday.setDate(startSunday.getDate() - startSunday.getDay()); // go back to Sunday
+
+    // End at the Saturday of the last week
+    const endSaturday = new Date(lastDate);
+    endSaturday.setDate(endSaturday.getDate() + (6 - endSaturday.getDay()));
+
+    // Build a map of date string → contribution
+    const contribMap = new Map<string, ContributionDay>();
+    contributions.forEach(c => contribMap.set(c.date, c));
+
+    // Build weeks array
+    const weeks: { level: 0|1|2|3|4; count: number; date: string }[][] = [];
+    const monthLbls: { text: string; colIndex: number }[] = [];
+    let seenMonths = new Set<string>();
+
+    let cursor = new Date(startSunday);
+    while (cursor <= endSaturday) {
+      const week: { level: 0|1|2|3|4; count: number; date: string }[] = [];
+      for (let d = 0; d < 7; d++) {
+        const dateStr = cursor.toISOString().slice(0, 10);
+        const contrib = contribMap.get(dateStr);
+        week.push({
+          level: contrib ? contrib.level : 0,
+          count: contrib ? contrib.count : 0,
+          date: dateStr,
+        });
+
+        // Track month labels: label appears at the column where a new month starts
+        const monthKey = `${cursor.getFullYear()}-${cursor.getMonth()}`;
+        if (!seenMonths.has(monthKey) && cursor.getDate() <= 7) {
+          // Only show month label if this week contains day 1-7 of the month
+          seenMonths.add(monthKey);
+          const monthName = cursor.toLocaleString('default', { month: 'short' });
+          monthLbls.push({ text: monthName, colIndex: weeks.length });
+        }
+
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      weeks.push(week);
+    }
+
+    const total = contributions.reduce((s, c) => s + c.count, 0);
+    return { activityGrid: weeks, monthLabels: monthLbls, totalContribs: total };
+  }, [contributions]);
+
+  // Show all of PatilSharvil's pinned repositories
+  const pinnedRepos = React.useMemo(() => {
+    // All 6 pinned repos — fetching all API pages ensures these are always found
+    const pinnedNames = [
+      'debugarena',
+      'algorithm-chatbot',
+      'approach-bot',
+      'chess-in-java',
+      'medscan',
+      'shree-classes-proctored-web-app',
+    ];
+    const matched = repos.filter(r => pinnedNames.includes(r.name.toLowerCase()));
+    
+    // Sort to keep original pinned order
+    matched.sort((a, b) => pinnedNames.indexOf(a.name.toLowerCase()) - pinnedNames.indexOf(b.name.toLowerCase()));
+
+    // Static fallback if repos array is empty (offline/rate-limited)
+    if (matched.length === 0) {
+      return [
+        { name: 'DebugArena', description: 'AI-integrated coding & gaming platform combining intelligent code generation with interactive developer workflows.', html_url: 'https://github.com/PatilSharvil/DebugArena', language: 'TypeScript', stargazers_count: 0, forks_count: 0, topics: ['ai', 'typescript'] },
+        { name: 'Algorithm-Chatbot', description: 'Conversational AI assistant for learning algorithms and problem-solving through natural language interactions.', html_url: 'https://github.com/PatilSharvil/Algorithm-Chatbot', language: 'Python', stargazers_count: 0, forks_count: 0, topics: ['ai', 'chatbot'] },
+        { name: 'Approach-Bot', description: 'Bot that suggests structured problem-solving approaches for competitive programming challenges.', html_url: 'https://github.com/PatilSharvil/Approach-Bot', language: 'Python', stargazers_count: 0, forks_count: 0, topics: ['bot', 'python'] },
+        { name: 'Chess-In-Java', description: 'Fully functional chess game implementation built in Java with a complete game engine and move validation.', html_url: 'https://github.com/PatilSharvil/Chess-In-Java', language: 'Java', stargazers_count: 0, forks_count: 0, topics: ['java', 'chess'] },
+        { name: 'MedScan', description: 'Medical document scanning and analysis system for digitizing and processing healthcare records.', html_url: 'https://github.com/PatilSharvil/MedScan', language: 'JavaScript', stargazers_count: 0, forks_count: 0, topics: ['medical', 'ai'] },
+        { name: 'Shree-Classes-Proctored-Web-App', description: 'Full-stack proctored exam platform with automated monitoring, user authentication, and session management.', html_url: 'https://github.com/PatilSharvil/Shree-Classes-Proctored-Web-App', language: 'JavaScript', stargazers_count: 0, forks_count: 0, topics: ['web', 'javascript'] },
+      ];
+    }
+    
+    return matched;
+  }, [repos]);
+
+  return (
+    <div className="content-padding github-content">
+      {loading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '280px', flexDirection: 'column', gap: '12px' }}>
+          <div className="spinning" style={{ width: '32px', height: '32px', border: '3px solid rgba(255,255,255,0.1)', borderTopColor: 'var(--accent)', borderRadius: '50%' }}></div>
+          <span style={{ fontSize: '13px', color: 'var(--subtext)' }}>Loading GitHub Profile...</span>
+        </div>
+      ) : !profile ? (
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>
+          <p>Unable to load GitHub details. Please check your network connection.</p>
+        </div>
+      ) : (
+        <>
+          <div className="gh-profile">
+            <div className="gh-avatar glass" style={{ overflow: 'hidden', padding: 0 }}>
+              <img src={profile.avatar_url} alt={profile.name || profile.login} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
+            <div className="gh-info">
+              <h2>{profile.name || 'Sharvil Patil'}</h2>
+              <p>@{profile.login}</p>
+              <p style={{ fontSize: '12px', color: 'var(--subtext)', marginTop: '4px' }}>{profile.bio || 'Building intelligent software systems.'}</p>
+              <div className="gh-stats" style={{ marginTop: '12px' }}>
+                <div className="gh-stat"><span className="gh-num">{profile.public_repos}</span><span className="gh-lbl">repos</span></div>
+                <div className="gh-stat"><span className="gh-num">{profile.followers}</span><span className="gh-lbl">followers</span></div>
+                <div className="gh-stat"><span className="gh-num">{totalStars}</span><span className="gh-lbl">stars</span></div>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
-    </div>
-  </div>
-);
+          
+          <div className="gh-activity">
+            <h3 className="gh-section-title"><GitBranch size={16} /> Contribution Activity</h3>
+            <div className="gh-contrib-calendar glass" style={{ padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+              
+              {/* Total contributions label */}
+              <div style={{ fontSize: '11px', color: 'var(--subtext)', marginBottom: '10px' }}>
+                {totalContribs > 0 ? `${totalContribs} contributions in the last year` : 'Loading contribution data...'}
+              </div>
 
-const GithubContent = () => (
-  <div className="content-padding github-content">
-    <div className="gh-profile">
-      <div className="gh-avatar glass"><Code2 size={40} /></div>
-      <div className="gh-info">
-        <h2>@yourusername</h2>
-        <p>Building in public · Open source enthusiast</p>
-        <div className="gh-stats">
-          <div className="gh-stat"><span className="gh-num">42</span><span className="gh-lbl">repos</span></div>
-          <div className="gh-stat"><span className="gh-num">1.2k</span><span className="gh-lbl">followers</span></div>
-          <div className="gh-stat"><span className="gh-num">128</span><span className="gh-lbl">stars</span></div>
-        </div>
-      </div>
-    </div>
-    <div className="gh-activity">
-      <h3 className="gh-section-title"><GitBranch size={16} /> Recent Activity</h3>
-      <div className="activity-grid">
-        {Array.from({length: 52}).map((_, week) => (
-          <div key={week} className="activity-col">
-            {Array.from({length: 7}).map((_, day) => {
-              const level = Math.floor(Math.random() * 5);
-              return <div key={day} className={`activity-cell level-${level}`} />;
-            })}
+              {/* Months Header Row */}
+              <div className="gh-months-row" style={{ display: 'flex', fontSize: '9px', color: 'var(--muted)', marginBottom: '4px', marginLeft: '28px', position: 'relative', height: '14px' }}>
+                {monthLabels.map((lbl, idx) => (
+                  <span 
+                    key={idx} 
+                    style={{ 
+                      position: 'absolute', 
+                      left: `${lbl.colIndex * 13}px`,
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {lbl.text}
+                  </span>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {/* Days of Week Column: Sun Mon Tue Wed Thu Fri Sat */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '9px', color: 'var(--muted)', width: '24px', paddingTop: '1px', flexShrink: 0 }}>
+                  {['', 'Mon', '', 'Wed', '', 'Fri', ''].map((label, i) => (
+                    <span key={i} style={{ height: '10px', lineHeight: '10px', display: 'block' }}>{label}</span>
+                  ))}
+                </div>
+
+                {/* Heatmap Grid */}
+                <div className="activity-grid" style={{ display: 'flex', gap: '3px', overflowX: 'auto', flex: 1, paddingBottom: '4px' }}>
+                  {activityGrid.map((weekData, week) => (
+                    <div key={week} className="activity-col" style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                      {weekData.map((cell, day) => (
+                        <div 
+                          key={day} 
+                          className={`activity-cell level-${cell.level}`} 
+                          style={{
+                            width: '10px',
+                            height: '10px',
+                            borderRadius: '2px',
+                            backgroundColor: cell.level === 0 ? 'rgba(255, 255, 255, 0.05)' : undefined,
+                            cursor: cell.date ? 'default' : 'default',
+                          }}
+                          title={cell.date ? (cell.count === 0 ? `No contributions on ${cell.date}` : `${cell.count} contribution${cell.count !== 1 ? 's' : ''} on ${cell.date}`) : ''}
+                        />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Legend Footer */}
+              <div className="activity-legend" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '6px', marginTop: '10px', fontSize: '10px', color: 'var(--muted)' }}>
+                <span>Less</span>
+                {[0, 1, 2, 3, 4].map(l => (
+                  <div 
+                    key={l} 
+                    className={`activity-cell level-${l}`} 
+                    style={{ 
+                      width: '10px', 
+                      height: '10px', 
+                      borderRadius: '2px',
+                      backgroundColor: l === 0 ? 'rgba(255, 255, 255, 0.05)' : undefined
+                    }} 
+                  />
+                ))}
+                <span>More</span>
+              </div>
+
+            </div>
           </div>
-        ))}
-      </div>
-      <div className="activity-legend">
-        <span>Less</span>
-        {[0,1,2,3,4].map(l => <div key={l} className={`activity-cell level-${l}`} />)}
-        <span>More</span>
-      </div>
-    </div>
-    <div className="gh-repos">
-      <h3 className="gh-section-title">Pinned Repositories</h3>
-      {['portfolio-os', 'dotfiles', 'api-gateway'].map(repo => (
-        <div key={repo} className="gh-repo glass">
-          <div className="gh-repo-name"><Code2 size={14} /> {repo}</div>
-          <div className="gh-repo-meta">
-            <span className="gh-lang">TypeScript</span>
-            <span><Star size={12} /> {Math.floor(Math.random() * 200 + 50)}</span>
-            <span><GitBranch size={12} /> {Math.floor(Math.random() * 20 + 5)}</span>
+          
+          <div className="gh-repos">
+            <h3 className="gh-section-title">Pinned Repositories</h3>
+            {pinnedRepos.map(repo => (
+              <a 
+                key={repo.name} 
+                href={repo.html_url} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="gh-repo glass"
+                style={{ textDecoration: 'none', color: 'inherit' }}
+              >
+                <div className="gh-repo-name"><Code2 size={14} /> {repo.name}</div>
+                <div className="gh-repo-meta">
+                  {repo.language && <span className="gh-lang">{repo.language}</span>}
+                  <span><Star size={12} /> {repo.stargazers_count}</span>
+                  <span><GitBranch size={12} /> {repo.forks_count || 0}</span>
+                </div>
+              </a>
+            ))}
           </div>
-        </div>
-      ))}
+        </>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 // ─── Theme Panel ─────────────────────────────────────────────────────────────
 const ThemePanel: React.FC<{ currentTheme: Theme; onSelect: (t: Theme) => void; onClose: () => void }> = ({ currentTheme, onSelect, onClose }) => (

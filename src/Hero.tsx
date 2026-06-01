@@ -15,8 +15,8 @@ const PARTICLES = Array.from({ length: 80 }, (_, i) => ({
   opacity: Math.random() * 0.6 + 0.2,
 }));
 
-const HERO_NAME = "Your Portfolio";
-const HERO_SUBTITLE = "Full-Stack Engineer · Linux Enthusiast · Open Source Contributor";
+const HERO_NAME = "Sharvil Patil";
+const HERO_SUBTITLE = "Computer Science Engineer · Agentic AI · Full-Stack & Backend";
 
 const Hero: React.FC<HeroProps> = ({ onEnter }) => {
   const heroRef = useRef<HTMLDivElement>(null);

@@ -2721,3 +2721,138 @@ kbd {
   transform: scale(0.95);
 }
 
+/* ==========================================================================
+   TECH STACK & SKILLS SYSTEM
+   ========================================================================== */
+
+.tech-stack-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 10px;
+}
+
+.tech-category {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tech-category-title {
+  display: flex;
+  align-items: center;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 8px;
+  margin: 0;
+}
+
+:root[data-theme="light"] .tech-category-title {
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+.tech-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.tech-icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.tech-icon-container:hover {
+  transform: translateY(-5px) scale(1.08);
+  filter: drop-shadow(0 0 10px var(--brand-color));
+}
+
+/* ==========================================================================
+   PROFILE IMAGE LIGHTBOX SYSTEM
+   ========================================================================== */
+
+.profile-lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.profile-lightbox-content {
+  position: relative;
+  padding: 28px;
+  border-radius: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  max-width: 90vw;
+  max-height: 90vh;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme="light"] .profile-lightbox-content {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.15);
+}
+
+.lightbox-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.lightbox-close-btn:hover {
+  background: var(--red);
+  color: white;
+  transform: scale(1.08) rotate(90deg);
+}
+
+.lightbox-image-wrap {
+  width: 360px;
+  height: 360px;
+  max-width: 75vw;
+  max-height: 75vw;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 32px var(--accent-glow);
+}
+
+.lightbox-caption {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.5px;
+}
+
+
